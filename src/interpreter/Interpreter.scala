@@ -6,10 +6,11 @@ object Interpreter {
 
   def value(exp: Exp)(implicit env: Env): Val = {
     exp match {
-      case ConstInt(x)  => new ValInt(x)
-      case ConstBool(b) => new ValBool(b)
-      case Plus(x, y)   => withInts(value(x), value(y), _ + _)
-      case Times(x, y)  => withInts(value(x), value(y), _ * _)
+      case ConstInt(x)   => new ValInt(x)
+      case ConstBool(b)  => new ValBool(b)
+      case Plus(x, y)    => withInts(value(x), value(y), _ + _, (i: Int) => ValInt(i))
+      case Times(x, y)   => withInts(value(x), value(y), _ * _, (i: Int) => ValInt(i))
+      case Greater(x, y) => withInts(value(x), value(y), _ > _, (b: Boolean) => ValBool(b))
       case If(c, x, y) =>
         withBool(value(c), { c =>
           if (c) value(x) else value(y)
@@ -24,10 +25,10 @@ object Interpreter {
     }
   }
 
-  def withInts(x: Val, y: Val, f: (Int, Int) => Int) =
+  def withInts[T](x: Val, y: Val, f: (Int, Int) => T, c: T => Val) =
     withInt(x, { x =>
       withInt(y, { y =>
-        ValInt(f(x, y))
+        c(f(x, y))
       })
     })
 
