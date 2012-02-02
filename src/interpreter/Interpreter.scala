@@ -1,6 +1,7 @@
 package interpreter
 
 import interpreter.Env._
+import parser.Parser._
 
 object Interpreter {
 
@@ -53,12 +54,16 @@ object Interpreter {
   def run(exp: Exp) = value(exp)(emptyEnv)
 
   def main(args: Array[String]): Unit = {
-
+    // Zuweisung
     println(run(Let("x", Plus(ConstInt(1), ConstInt(20)), Times(ConstInt(2), Ref("x")))))
-
+    // einstellige Funktion
     println(run(Let("f", Abs("x", Times(Ref("x"), Ref("x"))), App(Ref("f"), App(Ref("f"), ConstInt(3))))))
-
+    // Variablen Context
     println(run(Let("x", ConstInt(4), Let("f", Abs("y", Times(Ref("x"), Ref("y"))), Let("x", ConstInt(5), App(Ref("f"), Ref("x")))))))
+    // mehrstellige Funktion
+    println(run(Let("f", Abs("x", Abs("y", Times(Ref("x"), Ref("y")))), App(App(Ref("f"), ConstInt(2)), ConstInt(3)))))
+    // Rekusion
+
   }
 
 }
