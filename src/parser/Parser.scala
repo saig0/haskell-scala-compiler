@@ -19,13 +19,15 @@ object Parser extends Parser {
 
 class Parser extends JavaTokenParsers {
 
+  val reservedWords = List("if", "then", "else", "let", "in", "true", "false")
+
   def program: Parser[Exp] = condExp | let | abs | app | exp
 
   def exp = op | atom
 
   def atom = number | boolean | variable | parens(program)
 
-  def parens(parser: Parser[Exp]) = "(" ~> parser <~ ")" ^^ (p => p)
+  def parens(parser: Parser[Exp]) = "(" ~> parser <~ ")"
 
   def number = wholeNumber ^^ (i => ConstInt(i.toInt))
 
