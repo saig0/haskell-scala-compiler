@@ -2,27 +2,55 @@ package interpreter
 
 import interpreter.Env._
 import parser.Parser._
+import interpreter.Store._
 
 object Interpreter {
 
-  def value(exp: Exp)(implicit env: Env): Val = {
+  def value(exp: Exp)(implicit env: Env, store: Store): Val = {
     exp match {
-      case ConstInt(x)   => new ValInt(x)
-      case ConstBool(b)  => new ValBool(b)
-      case Plus(x, y)    => withInts(value(x), value(y), _ + _, (i: Int) => ValInt(i))
-      case Times(x, y)   => withInts(value(x), value(y), _ * _, (i: Int) => ValInt(i))
-      case Greater(x, y) => withInts(value(x), value(y), _ > _, (b: Boolean) => ValBool(b))
+      case ConstInt(x)     => new ValInt(x)
+      case ConstBool(b)    => new ValBool(b)
+      case ConstAddr(addr) => new ValAddr(addr)
+      case Plus(x, y)      => withInts(value(x), value(y), _ + _, (i: Int) => ValInt(i))
+      case Minus(x, y)     => withInts(value(x), value(y), _ - _, (i: Int) => ValInt(i))
+      case Times(x, y)     => withInts(value(x), value(y), _ * _, (i: Int) => ValInt(i))
+      case Greater(x, y)   => withInts(value(x), value(y), _ > _, (b: Boolean) => ValBool(b))
       case If(c, x, y) =>
         withBool(value(c), { c =>
           if (c) value(x) else value(y)
         })
-      case Let(n, x, y) => value(y)(extend(n, value(x)))
+      case Let(n, x, y) => value(y)(extend(n, value(x)), store)
       case Ref(n)       => env(n)
-      case Abs(n, x)    => new ValFun((v: Val) => value(x)(extend(n, v)))
+      case Abs(n, x)    => new ValFun((v: Val) => value(x)(extend(n, v), store))
       case App(x, y) =>
         withFun(value(x), { f =>
           f(value(y))
         })
+      case New(x) => withVal(value(x), { x =>
+        val addr = insert(x)
+        ValAddr(addr)
+      })
+      case Get(n) => withAddr(value(n), { n =>
+        get(n)
+      })
+      case Put(n, x) => withAddr(value(n), { n =>
+        withVal(value(x), { x =>
+          put(n, x)
+          ValUnit
+        })
+      })
+      case Rec(n, x) => {
+        val addr = insert(ValError("Rec"))
+        x match {
+          case Abs(x, y) => {
+            withVal(value(Abs(x, Let(n, Get(ConstAddr(addr)), y)))(extend(n, ValAddr(addr)), store), { v =>
+              put(addr, v)
+              v
+            })
+          }
+          case _ => ValError("expected Abs but found " + x)
+        }
+      }
     }
   }
 
@@ -51,7 +79,19 @@ object Interpreter {
       case _         => throw new IllegalArgumentException("expected Function but found " + f)
     }
 
-  def run(exp: Exp) = value(exp)(emptyEnv)
+  def withVal(x: Val, c: (Val => Val)) =
+    x match {
+      case ValError(msg) => throw new IllegalArgumentException("expected Value but found " + x)
+      case _             => c(x)
+    }
+
+  def withAddr(x: Val, c: (Addr => Val)) =
+    x match {
+      case ValAddr(addr) => c(addr)
+      case _             => throw new IllegalArgumentException("expected Addr but found " + x)
+    }
+
+  def run(exp: Exp) = value(exp)(emptyEnv, emptyStore)
 
   def main(args: Array[String]): Unit = {
     // Zuweisung
@@ -63,7 +103,9 @@ object Interpreter {
     // mehrstellige Funktion
     println(run(Let("f", Abs("x", Abs("y", Times(Ref("x"), Ref("y")))), App(App(Ref("f"), ConstInt(2)), ConstInt(3)))))
     // Rekusion
-
+    println(run(Let("fak", Rec("f", Abs("x", If(Greater(Ref("x"), ConstInt(0)), Times(Ref("x"), App(Ref("f"), Minus(Ref("x"), ConstInt(1)))), ConstInt(1)))), App(Ref("fak"), ConstInt(5)))))
+    // Speicher
+    println(run(Let("a", New(ConstInt(42)), Let("t", Put(Ref("a"), ConstInt(21)), Get(Ref("a"))))))
   }
 
 }

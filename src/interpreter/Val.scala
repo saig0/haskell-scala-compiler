@@ -12,3 +12,5 @@ case class ValError(msg: String) extends Val
 case class ValFun(f: Val => Val) extends Val
 
 case class ValAddr(a: Addr) extends Val
+
+case object ValUnit extends Val
