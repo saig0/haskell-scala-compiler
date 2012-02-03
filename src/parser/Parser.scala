@@ -19,9 +19,14 @@ object Parser extends Parser {
 
 class Parser extends JavaTokenParsers {
 
-  val reservedWords = List("if", "then", "else", "let", "in", "true", "false")
+  val reservedWords = List(
+    "if", "then", "else",
+    "let", "in",
+    "true", "false",
+    "rec",
+    "new", "get", "put")
 
-  def program: Parser[Exp] = condExp | let | abs | app | exp
+  def program: Parser[Exp] = condExp | let | rec | store | abs | app | exp
 
   def exp = op | atom
 
@@ -50,9 +55,16 @@ class Parser extends JavaTokenParsers {
   def let = "let" ~ "{" ~ identifier ~ "=" ~ program ~ "}" ~ "in" ~ program ^^
     { case "let" ~ "{" ~ name ~ "=" ~ x ~ "}" ~ "in" ~ y => Let(name, x, y) }
 
+  def rec = "rec" ~ identifier ~ program ^^
+    { case "rec" ~ name ~ x => Rec(name, x) }
+
   def abs = "\\" ~ identifier ~ "->" ~ program ^^
     { case "\\" ~ n ~ "->" ~ x => Abs(n, x) }
 
   def app = atom ~ rep1(atom) ^^ { case f ~ args => (f /: args)(App(_, _)) }
+
+  def store = ("new" ~ program ^^ { case "new" ~ value => New(value) }
+    | "get" ~ program ^^ { case "get" ~ addr => Get(addr) }
+    | "put" ~ program ~ program ^^ { case "put" ~ addr ~ value => Put(addr, value) })
 
 }

@@ -21,3 +21,11 @@ case class Ref(n: String) extends Exp
 case class Abs(n: String, x: Exp) extends Exp
 
 case class App(x: Exp, y: Exp) extends Exp
+
+case class Rec(n: String, x: Exp) extends Exp
+
+case class New(x: Exp) extends Exp
+
+case class Get(n: Exp) extends Exp
+
+case class Put(n: Exp, x: Exp) extends Exp
