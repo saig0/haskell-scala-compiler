@@ -13,4 +13,4 @@ case class ValFun(f: Val => Val) extends Val
 
 case class ValAddr(a: Addr) extends Val
 
-case object ValUnit extends Val
+case class ValUnit extends Val
