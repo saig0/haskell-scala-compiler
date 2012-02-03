@@ -27,30 +27,26 @@ object Interpreter {
           f(value(y))
         })
       case New(x) => withVal(value(x), { x =>
-        val addr = insert(x)
-        ValAddr(addr)
+        insert(x, { addr => ValAddr(addr) })
       })
       case Get(n) => withAddr(value(n), { n =>
-        get(n)
+        get(n, { x: Val => x })
       })
       case Put(n, x) => withAddr(value(n), { n =>
         withVal(value(x), { x =>
-          put(n, x)
-          ValUnit
+          put(n, x, { u => u })
         })
       })
-      case Rec(n, x) => {
-        val addr = insert(ValError("Rec"))
-        x match {
-          case Abs(x, y) => {
-            withVal(value(Abs(x, Let(n, Get(ConstAddr(addr)), y)))(extend(n, ValAddr(addr)), store), { v =>
-              put(addr, v)
-              v
-            })
+      case Rec(n, x) =>
+        insert(ValError("Rec"), { addr =>
+          x match {
+            case Abs(x, y) => {
+              withVal(value(Abs(x, Let(n, Get(ConstAddr(addr)), y)))(extend(n, ValAddr(addr)), store),
+                { v => put(addr, v, { _ => v }) })
+            }
+            case _ => ValError("expected Abs but found " + x)
           }
-          case _ => ValError("expected Abs but found " + x)
-        }
-      }
+        })
     }
   }
 

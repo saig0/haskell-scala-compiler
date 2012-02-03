@@ -10,15 +10,17 @@ object Store {
 
   def emptyStore: Store = Map[Addr, Val]()
 
-  def insert(value: Val)(implicit store: Store): Addr = {
+  def insert(value: Val, c: (Addr => Val))(implicit store: Store) = {
     val addr = new Addr(store.size)
     store += (addr -> value)
-    addr
+    c(addr)
   }
 
-  def get(addr: Addr)(implicit store: Store): Val = store(addr)
+  def get(addr: Addr, c: (Val => Val))(implicit store: Store) =
+    c(store(addr))
 
-  def put(addr: Addr, value: Val)(implicit store: Store) {
+  def put(addr: Addr, value: Val, c: (ValUnit => Val))(implicit store: Store) = {
     store(addr) = value
+    c(ValUnit())
   }
 }
