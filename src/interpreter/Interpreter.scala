@@ -2,13 +2,15 @@ package interpreter
 
 import interpreter.Env._
 import parser.Parser._
+import monad.Action._
+import monad.Action.ActionMonad._
 
 object Interpreter {
 
-  def value(exp: Exp)(implicit env: Env): Val = {
+  def value(exp: Exp)(implicit env: Env): Action[Val] = {
     exp match {
-      case ConstInt(x)   => new ValInt(x)
-      case ConstBool(b)  => new ValBool(b)
+      case ConstInt(x)   => unit(new ValInt(x))
+      case ConstBool(b)  => unit(new ValBool(b))
       case Plus(x, y)    => withInts(value(x), value(y), _ + _, (i: Int) => ValInt(i))
       case Times(x, y)   => withInts(value(x), value(y), _ * _, (i: Int) => ValInt(i))
       case Greater(x, y) => withInts(value(x), value(y), _ > _, (b: Boolean) => ValBool(b))
@@ -26,20 +28,22 @@ object Interpreter {
     }
   }
 
-  def withInts[T](x: Val, y: Val, f: (Int, Int) => T, c: T => Val) =
+  def withInts[T](x: Action[Val], y: Action[Val], f: (Int, Int) => T, c: T => Action[Val]) =
     withInt(x, { x =>
       withInt(y, { y =>
         c(f(x, y))
       })
     })
 
-  def withInt(x: Val, c: (Int => Val)) =
-    x match {
-      case ValInt(x) => c(x)
-      case _         => throw new IllegalArgumentException("expected Int but found " + x)
+  def withInt(x: Action[Val], c: (Int => Action[Val])): Action[Val] =
+    x bind { v: Val =>
+      v match {
+        case ValInt(x) => c(x)
+        case _         => throw new IllegalArgumentException("expected Int but found " + x)
+      }
     }
 
-  def withBool(b: Val, c: (Boolean => Val)) =
+  def withBool(b: Val, c: (Boolean => Action[Val])) =
     b match {
       case ValBool(b) => c(b)
       case _          => throw new IllegalArgumentException("expected Bool but found " + b)
