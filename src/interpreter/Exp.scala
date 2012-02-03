@@ -1,4 +1,5 @@
 package interpreter
+import interpreter.Store.Addr
 
 sealed trait Exp
 
@@ -7,6 +8,8 @@ case class ConstInt(x: Int) extends Exp
 case class ConstBool(b: Boolean) extends Exp
 
 case class Plus(x: Exp, y: Exp) extends Exp
+
+case class Minus(x: Exp, y: Exp) extends Exp
 
 case class Times(x: Exp, y: Exp) extends Exp
 
@@ -29,3 +32,5 @@ case class New(x: Exp) extends Exp
 case class Get(n: Exp) extends Exp
 
 case class Put(n: Exp, x: Exp) extends Exp
+
+case class ConstAddr(addr: Addr) extends Exp

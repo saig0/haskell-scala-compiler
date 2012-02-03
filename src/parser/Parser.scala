@@ -43,6 +43,7 @@ class Parser extends JavaTokenParsers {
   def identifier = """[a-zA-Z_]\w*""".r
 
   def op = (dualOp("+", (x, y) => Plus(x, y))
+    | dualOp("-", (x, y) => Minus(x, y))
     | dualOp("*", (x, y) => Times(x, y))
     | dualOp(">", (x, y) => Greater(x, y)))
 
