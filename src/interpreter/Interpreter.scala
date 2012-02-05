@@ -50,7 +50,8 @@ object Interpreter {
               withVal(value(Abs(x, Let(n, Get(ConstAddr(addr)), y)))(extend(n, ValAddr(addr)), store),
                 { v => put(addr, v, { () => v }) })
             }
-            case _ => ValError("expected Abs but found " + x)
+            case TypedAbs(x, t, y) => value(Rec(n, Abs(x, y)))
+            case _                 => ValError("expected Abs but found " + x)
           }
         })
       case TypedAbs(n, t, x) => value(Abs(n, x))
