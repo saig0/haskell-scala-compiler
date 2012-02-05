@@ -1,12 +1,18 @@
 package interpreter
 
-import interpreter.Env._
+import compiler.Env._
 import parser.Parser._
-import interpreter.Store._
+import compiler.Store._
+import compiler._
+import scala.collection.mutable.Map
 
 object Interpreter {
 
-  def value(exp: Exp)(implicit env: Env, store: Store): Val = {
+  def emptyEnv: Env[Val] = (n: String) => ValError("variable not found: " + n)
+
+  def emptyStore: Store[Val] = Map[Addr, Val]()
+
+  def value(exp: Exp)(implicit env: Env[Val], store: Store[Val]): Val = {
     exp match {
       case ConstInt(x)     => new ValInt(x)
       case ConstBool(b)    => new ValBool(b)
@@ -19,7 +25,7 @@ object Interpreter {
         withBool(value(c), { c =>
           if (c) value(x) else value(y)
         })
-      case Let(n, x, y) => value(y)(extend(n, value(x)), store)
+      case Let(n, x, y) => withVal(value(x), { x => value(y)(extend(n, x), store) })
       case Ref(n)       => env(n)
       case Abs(n, x)    => new ValFun((v: Val) => value(x)(extend(n, v), store))
       case App(x, y) =>
@@ -34,7 +40,7 @@ object Interpreter {
       })
       case Put(n, x) => withAddr(value(n), { n =>
         withVal(value(x), { x =>
-          put(n, x, { u => u })
+          put(n, x, { () => ValUnit() })
         })
       })
       case Rec(n, x) =>
@@ -42,11 +48,13 @@ object Interpreter {
           x match {
             case Abs(x, y) => {
               withVal(value(Abs(x, Let(n, Get(ConstAddr(addr)), y)))(extend(n, ValAddr(addr)), store),
-                { v => put(addr, v, { _ => v }) })
+                { v => put(addr, v, { () => v }) })
             }
             case _ => ValError("expected Abs but found " + x)
           }
         })
+      case TypedAbs(n, t, x) => value(Abs(n, x))
+      case TypedRec(n, t, x) => value(Rec(n, x))
     }
   }
 
@@ -60,31 +68,31 @@ object Interpreter {
   def withInt(x: Val, c: (Int => Val)) =
     x match {
       case ValInt(x) => c(x)
-      case _         => throw new IllegalArgumentException("expected Int but found " + x)
+      case _         => ValError("expected Int but found " + x)
     }
 
   def withBool(b: Val, c: (Boolean => Val)) =
     b match {
       case ValBool(b) => c(b)
-      case _          => throw new IllegalArgumentException("expected Bool but found " + b)
+      case _          => ValError("expected Bool but found " + b)
     }
 
   def withFun(f: Val, c: ((Val => Val) => Val)) =
     f match {
       case ValFun(f) => c(f)
-      case _         => throw new IllegalArgumentException("expected Function but found " + f)
+      case _         => ValError("expected Function but found " + f)
     }
 
   def withVal(x: Val, c: (Val => Val)) =
     x match {
-      case ValError(msg) => throw new IllegalArgumentException("expected Value but found " + x)
+      case ValError(msg) => ValError("expected Value but found " + x)
       case _             => c(x)
     }
 
   def withAddr(x: Val, c: (Addr => Val)) =
     x match {
       case ValAddr(addr) => c(addr)
-      case _             => throw new IllegalArgumentException("expected Addr but found " + x)
+      case _             => ValError("expected Addr but found " + x)
     }
 
   def run(exp: Exp) = value(exp)(emptyEnv, emptyStore)
