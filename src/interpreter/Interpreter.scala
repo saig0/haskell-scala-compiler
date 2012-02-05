@@ -3,10 +3,11 @@ package interpreter
 import interpreter.Env._
 import parser.Parser._
 import interpreter.Store._
+import interpreter.Cps._
 
 object Interpreter {
 
-  def value(exp: Exp)(implicit env: Env, store: Store): Val = {
+  def value(exp: Exp)(implicit env: Env, store: Store): CPS = {
     exp match {
       case ConstInt(x)     => new ValInt(x)
       case ConstBool(b)    => new ValBool(b)
@@ -50,38 +51,38 @@ object Interpreter {
     }
   }
 
-  def withInts[T](x: Val, y: Val, f: (Int, Int) => T, c: T => Val) =
+  def withInts[T](x: CPS, y: CPS, f: (Int, Int) => T, c: T => Val): CPS =
     withInt(x, { x =>
       withInt(y, { y =>
         c(f(x, y))
       })
     })
 
-  def withInt(x: Val, c: (Int => Val)) =
+  def withInt(x: CPS, c: (Int => CPS)): CPS =
     x match {
       case ValInt(x) => c(x)
       case _         => throw new IllegalArgumentException("expected Int but found " + x)
     }
 
-  def withBool(b: Val, c: (Boolean => Val)) =
+  def withBool(b: CPS, c: (Boolean => CPS)): CPS =
     b match {
       case ValBool(b) => c(b)
       case _          => throw new IllegalArgumentException("expected Bool but found " + b)
     }
 
-  def withFun(f: Val, c: ((Val => Val) => Val)) =
+  def withFun(f: CPS, c: ((Val => CPS) => CPS)): CPS =
     f match {
       case ValFun(f) => c(f)
       case _         => throw new IllegalArgumentException("expected Function but found " + f)
     }
 
-  def withVal(x: Val, c: (Val => Val)) =
+  def withVal(x: CPS, c: (Val => CPS)): CPS =
     x match {
       case ValError(msg) => throw new IllegalArgumentException("expected Value but found " + x)
       case _             => c(x)
     }
 
-  def withAddr(x: Val, c: (Addr => Val)) =
+  def withAddr(x: CPS, c: (Addr => CPS)): CPS =
     x match {
       case ValAddr(addr) => c(addr)
       case _             => throw new IllegalArgumentException("expected Addr but found " + x)
@@ -90,6 +91,8 @@ object Interpreter {
   def run(exp: Exp) = value(exp)(emptyEnv, emptyStore)
 
   def main(args: Array[String]): Unit = {
+    val t = run(Times(Plus(ConstInt(1), ConstInt(1)), Plus(ConstInt(1), ConstInt(20))))
+
     // Zuweisung
     println(run(Let("x", Plus(ConstInt(1), ConstInt(20)), Times(ConstInt(2), Ref("x")))))
     // einstellige Funktion
