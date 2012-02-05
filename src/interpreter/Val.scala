@@ -1,5 +1,5 @@
 package interpreter
-import interpreter.Store.Addr
+import compiler.Store.Addr
 
 sealed trait Val
 

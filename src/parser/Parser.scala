@@ -1,6 +1,7 @@
 package parser
 import scala.util.parsing.combinator.JavaTokenParsers
-import interpreter._
+import compiler._
+import types._
 
 object Parser extends Parser {
 
@@ -23,6 +24,7 @@ class Parser extends JavaTokenParsers {
     "if", "then", "else",
     "let", "in",
     "true", "false",
+    "Int", "Boolean",
     "rec",
     "new", "get", "put")
 
@@ -56,11 +58,15 @@ class Parser extends JavaTokenParsers {
   def let = "let" ~ "{" ~ identifier ~ "=" ~ program ~ "}" ~ "in" ~ program ^^
     { case "let" ~ "{" ~ name ~ "=" ~ x ~ "}" ~ "in" ~ y => Let(name, x, y) }
 
-  def rec = "rec" ~ identifier ~ program ^^
-    { case "rec" ~ name ~ x => Rec(name, x) }
+  def rec = ("rec" ~ identifier ~ "::" ~ typeName ~ program ^^
+    { case "rec" ~ name ~ "::" ~ typeName ~ x => TypedRec(name, typeName, x) }
+    | "rec" ~ identifier ~ program ^^ { case "rec" ~ name ~ x => Rec(name, x) })
 
-  def abs = "\\" ~ identifier ~ "->" ~ program ^^
-    { case "\\" ~ n ~ "->" ~ x => Abs(n, x) }
+  def abs = ("\\" ~ identifier ~ "::" ~ typeName ~ "->" ~ program ^^
+    { case "\\" ~ n ~ "::" ~ typeName ~ "->" ~ x => TypedAbs(n, typeName, x) }
+    | "\\" ~ identifier ~ "->" ~ program ^^ { case "\\" ~ n ~ "->" ~ x => Abs(n, x) })
+
+  def typeName = "Int" ^^ (_ => TypeInt()) | "Boolean" ^^ (_ => TypeBool())
 
   def app = atom ~ rep1(atom) ^^ { case f ~ args => (f /: args)(App(_, _)) }
 

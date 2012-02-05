@@ -1,5 +1,7 @@
-package interpreter
-import interpreter.Store.Addr
+package compiler
+
+import compiler.Store.Addr
+import types.Type
 
 sealed trait Exp
 
@@ -34,3 +36,7 @@ case class Get(n: Exp) extends Exp
 case class Put(n: Exp, x: Exp) extends Exp
 
 case class ConstAddr(addr: Addr) extends Exp
+
+case class TypedAbs(n: String, t: Type, x: Exp) extends Exp
+
+case class TypedRec(n: String, t: Type, x: Exp) extends Exp
