@@ -23,10 +23,10 @@ object Action {
       })
   }
 
-  implicit def actionMonadSyntax[A](a: Action[A]) = new {
-    def >>=[T](f: A => Action[T]) = ActionMonad.bind(a)(f)
-  }
-
 }
 
-case class Action[T](a: (Store => (Store, T)))
+import monad.Action._
+
+case class Action[T](a: (Store => (Store, T))) {
+  def >>=[B](f: T => Action[B]) = ActionMonad.bind(this)(f)
+}

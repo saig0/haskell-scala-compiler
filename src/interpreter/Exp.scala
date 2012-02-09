@@ -1,10 +1,13 @@
 package interpreter
+import interpreter.Store._
 
 sealed trait Exp
 
 case class ConstInt(x: Int) extends Exp
 
 case class ConstBool(b: Boolean) extends Exp
+
+case class ConstAddr(addr: Addr) extends Exp
 
 case class Plus(x: Exp, y: Exp) extends Exp
 
