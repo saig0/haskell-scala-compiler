@@ -3,11 +3,11 @@ import interpreter.Store._
 
 object Action {
 
-  type A[T] = (Store => (Store, T))
-
-  case class Action[T](a: A[T]) {
-    def bind[B](f: A[T] => Action[B]): Action[B] = f(a)
-  }
+  def run[T](a: Action[T]) =
+    a match {
+      case Action(f) =>
+        f(emptyStore) match { case (_, r) => r }
+    }
 
   object ActionMonad extends Monad[Action] {
     def unit[T](a: T) = new Action((s) => (s, a))
@@ -23,4 +23,10 @@ object Action {
       })
   }
 
+  implicit def actionMonadSyntax[A](a: Action[A]) = new {
+    def >>=[B](f: A => Action[B]) = ActionMonad.bind(a)(f)
+  }
+
 }
+
+case class Action[T](a: (Store => (Store, T)))
