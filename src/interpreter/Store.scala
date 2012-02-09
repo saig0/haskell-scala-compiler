@@ -1,5 +1,5 @@
 package interpreter
-import monad.Action._
+import monad.Action
 
 object Store {
 

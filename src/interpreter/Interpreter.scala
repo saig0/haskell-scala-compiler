@@ -4,6 +4,7 @@ import interpreter.Env._
 import parser.Parser._
 import monad.Action._
 import monad.Action.ActionMonad._
+import monad._
 
 object Interpreter {
 
@@ -11,19 +12,19 @@ object Interpreter {
     exp match {
       case ConstInt(x)   => unit(new ValInt(x))
       case ConstBool(b)  => unit(new ValBool(b))
-      case Plus(x, y)    => withInts(value(x), value(y), _ + _, (i: Int) => ValInt(i))
-      case Times(x, y)   => withInts(value(x), value(y), _ * _, (i: Int) => ValInt(i))
-      case Greater(x, y) => withInts(value(x), value(y), _ > _, (b: Boolean) => ValBool(b))
+      case Plus(x, y)    => withInts(value(x), value(y), _ + _, (i: Int) => unit(ValInt(i)))
+      case Times(x, y)   => withInts(value(x), value(y), _ * _, (i: Int) => unit(ValInt(i)))
+      case Greater(x, y) => withInts(value(x), value(y), _ > _, (b: Boolean) => unit(ValBool(b)))
       case If(c, x, y) =>
         withBool(value(c), { c =>
           if (c) value(x) else value(y)
         })
-      case Let(n, x, y) => value(y)(extend(n, value(x)))
-      case Ref(n)       => env(n)
-      case Abs(n, x)    => new ValFun((v: Val) => value(x)(extend(n, v)))
+      case Let(n, x, y) => withVal(value(x), { v => value(y)(extend(n, v)) })
+      case Ref(n)       => unit(env(n))
+      case Abs(n, x)    => unit(new ValFun((v: Val) => value(x)(extend(n, v))))
       case App(x, y) =>
         withFun(value(x), { f =>
-          f(value(y))
+          withVal(value(y), { v => f(v) })
         })
     }
   }
@@ -36,26 +37,38 @@ object Interpreter {
     })
 
   def withInt(x: Action[Val], c: (Int => Action[Val])): Action[Val] =
-    x bind { v: Val =>
+    x >>= { v =>
       v match {
         case ValInt(x) => c(x)
         case _         => throw new IllegalArgumentException("expected Int but found " + x)
       }
     }
 
-  def withBool(b: Val, c: (Boolean => Action[Val])) =
-    b match {
-      case ValBool(b) => c(b)
-      case _          => throw new IllegalArgumentException("expected Bool but found " + b)
+  def withBool(b: Action[Val], c: (Boolean => Action[Val])) =
+    b >>= { b =>
+      b match {
+        case ValBool(b) => c(b)
+        case _          => throw new IllegalArgumentException("expected Bool but found " + b)
+      }
     }
 
-  def withFun(f: Val, c: ((Val => Val) => Val)) =
-    f match {
-      case ValFun(f) => c(f)
-      case _         => throw new IllegalArgumentException("expected Function but found " + f)
+  def withFun(f: Action[Val], c: ((Val => Action[Val]) => Action[Val])) =
+    f >>= { f =>
+      f match {
+        case ValFun(f) => c(f)
+        case _         => throw new IllegalArgumentException("expected Function but found " + f)
+      }
     }
 
-  def run(exp: Exp) = value(exp)(emptyEnv)
+  def withVal(a: Action[Val], c: (Val => Action[Val])): Action[Val] =
+    a >>= { a =>
+      a match {
+        case ValError(msg) => unit(ValError(msg))
+        case _             => c(a)
+      }
+    }
+
+  def run(exp: Exp) = Action.run(value(exp)(emptyEnv))
 
   def main(args: Array[String]): Unit = {
     // Zuweisung
