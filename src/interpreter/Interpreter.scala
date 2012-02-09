@@ -2,9 +2,9 @@ package interpreter
 
 import interpreter.Env._
 import parser.Parser._
-import monad.Action._
 import monad.Action.ActionMonad._
 import monad._
+import interpreter.Store._
 
 object Interpreter {
 
@@ -26,6 +26,17 @@ object Interpreter {
         withFun(value(x), { f =>
           withVal(value(y), { v => f(v) })
         })
+      case New(x) => withVal(value(x), { v =>
+        insert(v) >>= { addr =>
+          unit(ValAddr(addr))
+        }
+      })
+      case Get(n) => withAddr(value(n), { addr => get(addr) })
+      case Put(n, x) => withAddr(value(n), { addr =>
+        withVal(value(x), { v =>
+          put(addr, v) >>= { _ => unit(ValUnit()) }
+        })
+      })
     }
   }
 
@@ -40,23 +51,23 @@ object Interpreter {
     x >>= { v =>
       v match {
         case ValInt(x) => c(x)
-        case _         => throw new IllegalArgumentException("expected Int but found " + x)
+        case _         => unit(ValError("expected Int but found " + x))
       }
     }
 
-  def withBool(b: Action[Val], c: (Boolean => Action[Val])) =
+  def withBool(b: Action[Val], c: (Boolean => Action[Val])): Action[Val] =
     b >>= { b =>
       b match {
         case ValBool(b) => c(b)
-        case _          => throw new IllegalArgumentException("expected Bool but found " + b)
+        case _          => unit(ValError("expected Bool but found " + b))
       }
     }
 
-  def withFun(f: Action[Val], c: ((Val => Action[Val]) => Action[Val])) =
+  def withFun(f: Action[Val], c: ((Val => Action[Val]) => Action[Val])): Action[Val] =
     f >>= { f =>
       f match {
         case ValFun(f) => c(f)
-        case _         => throw new IllegalArgumentException("expected Function but found " + f)
+        case _         => unit(ValError("expected Function but found " + f))
       }
     }
 
@@ -65,6 +76,14 @@ object Interpreter {
       a match {
         case ValError(msg) => unit(ValError(msg))
         case _             => c(a)
+      }
+    }
+
+  def withAddr(a: Action[Val], c: (Addr => Action[Val])): Action[Val] =
+    a >>= { a =>
+      a match {
+        case ValAddr(addr) => c(addr)
+        case _             => unit(ValError("expected Addr but found "))
       }
     }
 
@@ -80,7 +99,9 @@ object Interpreter {
     // mehrstellige Funktion
     println(run(Let("f", Abs("x", Abs("y", Times(Ref("x"), Ref("y")))), App(App(Ref("f"), ConstInt(2)), ConstInt(3)))))
     // Rekusion
-
+    // println(run(Let("fak", Rec("f", Abs("x", If(Greater(Ref("x"), ConstInt(0)), Times(Ref("x"), App(Ref("f"), Minus(Ref("x"), ConstInt(1)))), ConstInt(1)))), App(Ref("fak"), ConstInt(5)))))
+    // Speicher
+    println(run(Let("a", New(ConstInt(42)), Let("t", Put(Ref("a"), ConstInt(21)), Get(Ref("a"))))))
   }
 
 }

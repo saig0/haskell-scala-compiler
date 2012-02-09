@@ -8,6 +8,8 @@ case class ConstBool(b: Boolean) extends Exp
 
 case class Plus(x: Exp, y: Exp) extends Exp
 
+case class Minus(x: Exp, y: Exp) extends Exp
+
 case class Times(x: Exp, y: Exp) extends Exp
 
 case class Greater(x: Exp, y: Exp) extends Exp

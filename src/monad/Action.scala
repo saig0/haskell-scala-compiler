@@ -24,7 +24,7 @@ object Action {
   }
 
   implicit def actionMonadSyntax[A](a: Action[A]) = new {
-    def >>=[B](f: A => Action[B]) = ActionMonad.bind(a)(f)
+    def >>=[T](f: A => Action[T]) = ActionMonad.bind(a)(f)
   }
 
 }
