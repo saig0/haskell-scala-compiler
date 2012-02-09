@@ -10,11 +10,13 @@ object Interpreter {
 
   def value(exp: Exp)(implicit env: Env): Action[Val] = {
     exp match {
-      case ConstInt(x)   => unit(new ValInt(x))
-      case ConstBool(b)  => unit(new ValBool(b))
-      case Plus(x, y)    => withInts(value(x), value(y), _ + _, (i: Int) => unit(ValInt(i)))
-      case Times(x, y)   => withInts(value(x), value(y), _ * _, (i: Int) => unit(ValInt(i)))
-      case Greater(x, y) => withInts(value(x), value(y), _ > _, (b: Boolean) => unit(ValBool(b)))
+      case ConstInt(x)     => unit(new ValInt(x))
+      case ConstBool(b)    => unit(new ValBool(b))
+      case ConstAddr(addr) => unit(new ValAddr(addr))
+      case Plus(x, y)      => withInts(value(x), value(y), _ + _, (i: Int) => unit(ValInt(i)))
+      case Minus(x, y)     => withInts(value(x), value(y), _ - _, (i: Int) => unit(ValInt(i)))
+      case Times(x, y)     => withInts(value(x), value(y), _ * _, (i: Int) => unit(ValInt(i)))
+      case Greater(x, y)   => withInts(value(x), value(y), _ > _, (b: Boolean) => unit(ValBool(b)))
       case If(c, x, y) =>
         withBool(value(c), { c =>
           if (c) value(x) else value(y)
@@ -37,6 +39,14 @@ object Interpreter {
           put(addr, v) >>= { _ => unit(ValUnit()) }
         })
       })
+      case Rec(n, x) => x match {
+        case Abs(x, b) => insert(ValError("rec")) >>= { addr =>
+          withVal(value(Abs(x, Let(n, Get(ConstAddr(addr)), b)))(extend(n, ValAddr(addr))), { v =>
+            put(addr, v) >>= { _ => unit(v) }
+          })
+        }
+        case _ => unit(ValError("expected Abs but found " + x))
+      }
     }
   }
 
@@ -99,7 +109,7 @@ object Interpreter {
     // mehrstellige Funktion
     println(run(Let("f", Abs("x", Abs("y", Times(Ref("x"), Ref("y")))), App(App(Ref("f"), ConstInt(2)), ConstInt(3)))))
     // Rekusion
-    // println(run(Let("fak", Rec("f", Abs("x", If(Greater(Ref("x"), ConstInt(0)), Times(Ref("x"), App(Ref("f"), Minus(Ref("x"), ConstInt(1)))), ConstInt(1)))), App(Ref("fak"), ConstInt(5)))))
+    println(run(Let("fak", Rec("f", Abs("x", If(Greater(Ref("x"), ConstInt(0)), Times(Ref("x"), App(Ref("f"), Minus(Ref("x"), ConstInt(1)))), ConstInt(1)))), App(Ref("fak"), ConstInt(5)))))
     // Speicher
     println(run(Let("a", New(ConstInt(42)), Let("t", Put(Ref("a"), ConstInt(21)), Get(Ref("a"))))))
   }
