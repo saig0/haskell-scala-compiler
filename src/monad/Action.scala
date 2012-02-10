@@ -9,7 +9,7 @@ object Action {
         f(emptyStore) match { case (_, r) => r }
     }
 
-  object ActionMonad extends Monad[Action] {
+  implicit object ActionMonad extends Monad[Action] {
     def unit[T](a: T) = new Action((s) => (s, a))
     def bind[T, B](a: Action[T])(f: T => Action[B]) =
       new Action({ s0 =>
@@ -25,8 +25,4 @@ object Action {
 
 }
 
-import monad.Action._
-
-case class Action[T](a: (Store => (Store, T))) {
-  def >>=[B](f: T => Action[B]) = ActionMonad.bind(this)(f)
-}
+case class Action[T](a: (Store => (Store, T)))
